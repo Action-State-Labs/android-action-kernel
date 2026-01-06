@@ -14,7 +14,7 @@ LOCAL_DUMP_PATH = "window_dump.xml"
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-def run_adb_command(command: List[str]):
+def run_adb_command(command: list[str]):
     """Executes a shell command via ADB."""
     result = subprocess.run([ADB_PATH] + command, capture_output=True, text=True)
     if result.stderr and "error" in result.stderr.lower():
