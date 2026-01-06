@@ -159,7 +159,7 @@ Browser agents can't reach these. Desktop agents don't fit. **Android Use is the
 - Python 3.10+
 - Android device or emulator (USB debugging enabled)
 - ADB (Android Debug Bridge)
-- OpenAI API key
+- OpenRouter API key (default) **or** OpenAI API key
 
 ### Installation
 
@@ -178,11 +178,19 @@ brew install android-platform-tools  # macOS
 # 4. Connect device & verify
 adb devices
 
-# 5. Set API key
-export OPENAI_API_KEY="sk-..."
+# 5. Set API key (OpenRouter is the default provider)
+export OPENROUTER_API_KEY="sk-or-..."
 
 # 6. Run your first agent
 python kernel.py
+```
+
+### Alternative: Use OpenAI Directly
+
+```bash
+# Override to use OpenAI instead of OpenRouter
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY="sk-..."
 ```
 
 ### Try It: Logistics Example

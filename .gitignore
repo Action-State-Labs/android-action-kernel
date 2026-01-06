@@ -1,11 +1,8 @@
 __pycache__/
 *.xml
 .env
-venv/venv/
-__pycache__/
-*.xml
 .DS_Store
-.env
 venv/
-venv/
-venv/
+myenv/
+logs/
+window_dump.xml
