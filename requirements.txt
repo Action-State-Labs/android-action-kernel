@@ -1,1 +1,4 @@
 pydantic-ai-slim[openai,anthropic,google,bedrock]
+
+# Dev dependencies
+pytest>=8.0.0
