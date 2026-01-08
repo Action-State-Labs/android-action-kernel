@@ -2,17 +2,25 @@ import os
 import time
 import subprocess
 import json
-from typing import Dict, Any
-from openai import OpenAI
+import asyncio
+from typing import Dict, Any, List
+from llm_manager import LLMManager
+from action_models import TapAction, TypeAction, NavigationAction, ControlAction
 import sanitizer
 
 # --- CONFIGURATION ---
-ADB_PATH = "adb"  # Ensure adb is in your PATH
-MODEL = "gpt-4o"  # Or "gpt-4-turbo" for faster/cheaper execution
+ADB_PATH = "adb"
 SCREEN_DUMP_PATH = "/sdcard/window_dump.xml"
 LOCAL_DUMP_PATH = "window_dump.xml"
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Initialize LLM manager
+llm_manager = None
+
+def initialize_llm():
+    """Initialize the LLM manager."""
+    global llm_manager
+    if llm_manager is None:
+        llm_manager = LLMManager()
 
 def run_adb_command(command: List[str]):
     """Executes a shell command via ADB."""
@@ -39,93 +47,68 @@ def get_screen_state() -> str:
     elements = sanitizer.get_interactive_elements(xml_content)
     return json.dumps(elements, indent=2)
 
-def execute_action(action: Dict[str, Any]):
+def execute_action(action):
     """Executes the action decided by the LLM."""
-    act_type = action.get("action")
-    
-    if act_type == "tap":
-        x, y = action.get("coordinates")
+    if isinstance(action, TapAction):
+        x, y = action.coordinates
         print(f"👉 Tapping: ({x}, {y})")
         run_adb_command(["shell", "input", "tap", str(x), str(y)])
-        
-    elif act_type == "type":
-        text = action.get("text").replace(" ", "%s") # ADB requires %s for spaces
-        print(f"⌨️ Typing: {action.get('text')}")
+
+    elif isinstance(action, TypeAction):
+        text = action.text.replace(" ", "%s")  # ADB requires %s for spaces
+        print(f"⌨️ Typing: {action.text}")
         run_adb_command(["shell", "input", "text", text])
-        
-    elif act_type == "home":
-        print("🏠 Going Home")
-        run_adb_command(["shell", "input", "keyevent", "KEYWORDS_HOME"])
-        
-    elif act_type == "back":
-        print("🔙 Going Back")
-        run_adb_command(["shell", "input", "keyevent", "KEYWORDS_BACK"])
-        
-    elif act_type == "wait":
-        print("⏳ Waiting...")
-        time.sleep(2)
-        
-    elif act_type == "done":
-        print("✅ Goal Achieved.")
-        exit(0)
 
-def get_llm_decision(goal: str, screen_context: str) -> Dict[str, Any]:
+    elif isinstance(action, NavigationAction):
+        if action.action == "home":
+            print("🏠 Going Home")
+            run_adb_command(["shell", "input", "keyevent", "KEYCODE_HOME"])
+        elif action.action == "back":
+            print("🔙 Going Back")
+            run_adb_command(["shell", "input", "keyevent", "KEYCODE_BACK"])
+
+    elif isinstance(action, ControlAction):
+        if action.action == "wait":
+            print("⏳ Waiting...")
+            time.sleep(2)
+        elif action.action == "done":
+            print("✅ Goal Achieved.")
+            exit(0)
+
+async def get_llm_decision(goal: str, screen_context: str):
     """Sends screen context to LLM and asks for the next move."""
-    system_prompt = """
-    You are an Android Driver Agent. Your job is to achieve the user's goal by navigating the UI.
-    
-    You will receive:
-    1. The User's Goal.
-    2. A list of interactive UI elements (JSON) with their (x,y) center coordinates.
-    
-    You must output ONLY a valid JSON object with your next action.
-    
-    Available Actions:
-    - {"action": "tap", "coordinates": [x, y], "reason": "Why you are tapping"}
-    - {"action": "type", "text": "Hello World", "reason": "Why you are typing"}
-    - {"action": "home", "reason": "Go to home screen"}
-    - {"action": "back", "reason": "Go back"}
-    - {"action": "wait", "reason": "Wait for loading"}
-    - {"action": "done", "reason": "Task complete"}
-    
-    Example Output:
-    {"action": "tap", "coordinates": [540, 1200], "reason": "Clicking the 'Connect' button"}
-    """
-    
-    response = client.chat.completions.create(
-        model=MODEL,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"GOAL: {goal}\n\nSCREEN_CONTEXT:\n{screen_context}"}
-        ]
-    )
-    
-    return json.loads(response.choices[0].message.content)
+    global llm_manager
+    if llm_manager is None:
+        initialize_llm()
 
-def run_agent(goal: str, max_steps=10):
-    print(f"🚀 Android Use Agent Started. Goal: {goal}")
-    
+    action = await llm_manager.get_decision(goal, screen_context)
+    return action
+
+async def run_agent(goal: str, max_steps=10):
+    """Main agent loop."""
+    initialize_llm()
+    print(f"🚀 Android Use Agent Started")
+    print(f"📡 Provider: {llm_manager.provider} | Model: {llm_manager.model}")
+    print(f"🎯 Goal: {goal}\n")
+
     for step in range(max_steps):
         print(f"\n--- Step {step + 1} ---")
-        
+
         # 1. Perception
         print("👀 Scanning Screen...")
         screen_context = get_screen_state()
-        
+
         # 2. Reasoning
         print("🧠 Thinking...")
-        decision = get_llm_decision(goal, screen_context)
-        print(f"💡 Decision: {decision.get('reason')}")
-        
+        decision = await get_llm_decision(goal, screen_context)
+        print(f"💡 Decision: {decision.reason}")
+
         # 3. Action
         execute_action(decision)
-        
+
         # Wait for UI to update
         time.sleep(2)
 
 if __name__ == "__main__":
-    # Example Goal: "Open settings and turn on Wi-Fi"
-    # Or your demo goal: "Find the 'Connect' button and tap it"
     GOAL = input("Enter your goal: ")
-    run_agent(GOAL)
+    asyncio.run(run_agent(GOAL))
