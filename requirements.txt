@@ -1,1 +1,1 @@
-openai>=1.12.0
+pydantic-ai-slim[openai,anthropic,google,bedrock]
