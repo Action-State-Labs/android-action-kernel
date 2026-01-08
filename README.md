@@ -178,8 +178,20 @@ brew install android-platform-tools  # macOS
 # 4. Connect device & verify
 adb devices
 
-# 5. Set API key
-export OPENAI_API_KEY="sk-..."
+# 5. Configure LLM Provider (choose one)
+export LLM_PROVIDER="openai"  # or anthropic, gemini, bedrock
+
+# Set appropriate API key
+export OPENAI_API_KEY="sk-..."        # for OpenAI
+# export ANTHROPIC_API_KEY="sk-..."  # for Anthropic
+# export GOOGLE_API_KEY="..."        # for Gemini
+# export AWS_PROFILE="default"       # for Bedrock
+
+# Optional: Override default model
+# export OPENAI_MODEL="gpt-4o"
+# export ANTHROPIC_MODEL="claude-sonnet-4"
+# export GEMINI_MODEL="gemini-2.0-flash-exp"
+# export BEDROCK_MODEL="anthropic.claude-sonnet-4-20250514-v1:0"
 
 # 6. Run your first agent
 python kernel.py
@@ -390,7 +402,8 @@ screen_json = get_screen_state()
 
 ### Next 2 Weeks
 - [ ] **PyPI package:** `pip install android-use`
-- [ ] **Multi-LLM support:** Claude, Gemini, Llama
+- [x] **Multi-LLM support:** OpenAI, Claude, Gemini, Bedrock
+- [ ] **Llama support:** Local model integration
 - [ ] **WhatsApp integration:** Pre-built actions for messaging
 - [ ] **Error recovery:** Retry logic, fallback strategies
 
