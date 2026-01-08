@@ -86,7 +86,10 @@ async def get_llm_decision(goal: str, screen_context: str):
 
 async def run_agent(goal: str, max_steps=10):
     """Main agent loop."""
-    print(f"🚀 Android Use Agent Started. Goal: {goal}")
+    initialize_llm()
+    print(f"🚀 Android Use Agent Started")
+    print(f"📡 Provider: {llm_manager.provider} | Model: {llm_manager.model}")
+    print(f"🎯 Goal: {goal}\n")
 
     for step in range(max_steps):
         print(f"\n--- Step {step + 1} ---")
